@@ -21,9 +21,9 @@ public class Producer extends Thread {
 
     private int dataSeed = 0;
     private Random rand=null;
-    private final long stockLimit;
+    private final Integer stockLimit;
 
-    public Producer(LinkedBlockingQueue<Integer> queue,long stockLimit) {
+    public Producer(LinkedBlockingQueue<Integer> queue,Integer stockLimit) {
         this.queue = queue;
         rand = new Random(System.currentTimeMillis());
         this.stockLimit=stockLimit;
@@ -41,7 +41,7 @@ public class Producer extends Thread {
                     queue.put(dataSeed);
 
 
-                    Thread.sleep(1000);
+                    Thread.sleep(10);
                 }
                 else{
                     System.out.println("Limit reached" + stockLimit + "Producer Waiting...");

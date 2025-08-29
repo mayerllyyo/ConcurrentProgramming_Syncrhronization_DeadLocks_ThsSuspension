@@ -110,3 +110,77 @@ In both classes we adjust the data structure to manage a LinkedBlockingQueue, us
 In adition, we made use of stockLimit in Productor class.
 
 ![image](assets/MemoryConsumeReduced.png)
+
+
+#### Make the necessary adjustments so that the producer generates items quickly, and the consumer consumes them slowly, 
+while enforcing a stock limit. Verify with JVisualVM that CPU consumption remains low even with a small stock capacity.
+
+**In `Producer` class:**
+
+```java
+public Producer(LinkedBlockingQueue<Integer> queue, Integer stockLimit) {
+    this.queue = queue;
+    rand = new Random(System.currentTimeMillis());
+    this.stockLimit = stockLimit;
+}
+
+@Override
+public void run() {
+    try {
+        while (true) {
+            if (queue.size() < stockLimit) {
+                dataSeed = dataSeed + rand.nextInt(100);
+                System.out.println("Producer added " + dataSeed);
+                queue.put(dataSeed);
+
+                Thread.sleep(10); // fast production
+            } else {
+                System.out.println("Limit reached " + stockLimit + " - Producer waiting...");
+            }
+        }
+    } catch (InterruptedException ex) {
+        Logger.getLogger(Producer.class.getName()).log(Level.SEVERE, null, ex);
+        System.out.println("Producer Interrupted");
+        Thread.currentThread().interrupt();
+    }
+}
+```
+
+**In `Consumer` class:**
+
+```java
+public Consumer(LinkedBlockingQueue<Integer> queue){
+    this.queue = queue;
+}
+
+@Override
+public void run() {
+    try {
+        while (true) {
+            int elem = queue.take();
+            System.out.println("Consumer consumes " + elem);
+            
+            Thread.sleep(1000); // slow consumption
+        }
+    } catch (InterruptedException e) {
+        System.out.println("Consumer interrupted");
+    }
+}
+```
+
+In both classes, we use LinkedBlockingQueue as the shared buffer, leveraging its thread-safe and blocking capabilities.
+
+- The **producer** attempts to generate new elements rapidly (Thread.sleep(10)).
+- The **consumer** simulates a slower consumption rate (Thread.sleep(1000)).
+- A stockLimit is enforced by checking the current size of the queue before inserting new items.
+
+
+ **CPU usage verified with JVisualVM:**
+
+Despite having a **small stock limit**, the producer does not cause high CPU usage, as shown in the graph below.
+
+![image](assets/Memory_consume_fast_producer_timited_Stock.png)
+
+This confirms that our solution behaves efficiently under constrained buffer sizes and asynchronous production/consumption rates.
+
+### *Part II - Distributed Search and Synchronization*
