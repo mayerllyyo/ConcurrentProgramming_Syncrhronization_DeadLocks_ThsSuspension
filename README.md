@@ -17,3 +17,8 @@ shared data synchronization across threads, and thread coordination in high-conc
 
 ###  **Part I: Producer / Consumer – Thread Control with wait/notify**
 
+![image](assets/Memory%20consume.png)
+
+We identify that 21.4% was the highest consume of CPU, and that consume was from the Main class "StartProduction"
+
+
