@@ -6,6 +6,7 @@
 package edu.eci.arst.concprg.prodcons;
 
 import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  *
@@ -13,22 +14,23 @@ import java.util.Queue;
  */
 public class Consumer extends Thread{
     
-    private Queue<Integer> queue;
+    private LinkedBlockingQueue<Integer> queue;
     
     
-    public Consumer(Queue<Integer> queue){
+    public Consumer(LinkedBlockingQueue<Integer> queue){
         this.queue=queue;        
     }
     
     @Override
     public void run() {
-        while (true) {
-
-            if (queue.size() > 0) {
-                int elem=queue.poll();
-                System.out.println("Consumer consumes "+elem);                                
+        try {
+            while (true) {
+                int elem = queue.take();
+                System.out.println("Consumer consumes " + elem);
             }
-            
+        } catch (InterruptedException e) {
+            System.out.println("Consumer interrupted");
         }
     }
 }
+
