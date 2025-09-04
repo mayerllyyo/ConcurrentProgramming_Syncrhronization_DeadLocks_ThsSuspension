@@ -184,3 +184,65 @@ Despite having a **small stock limit**, the producer does not cause high CPU usa
 This confirms that our solution behaves efficiently under constrained buffer sizes and asynchronous production/consumption rates.
 
 ### *Part II - Distributed Search and Synchronization*
+
+
+### *Part III*
+
+Review the “highlander-simulator” program, available in the edu.eci.arsw.highlandersim package. This is a game in which:
+
+- There are N immortal players.
+- Each player knows the remaining N-1 players.
+- Each player constantly attacks another immortal. The first player to attack subtracts M hit points from their opponent and increases their own hit points by the same amount.
+- The game may never have a single winner. Most likely, only two will remain in the end, fighting indefinitely, subtracting and adding hit points.
+
+
+Review the code and identify how the aforementioned functionality was implemented. Given the game's intent, an invariant should be that the sum of all players' hit points should always be the same (obviously, at a time point when a time increment/decrement operation is not in progress). In this case, for N players, what should this value be?
+
+The value for N players must be N * health
+(inital health of 1 immortal)
+
+This functionality occurs in these methods of the immortal.java class:
+
+```java
+
+public void run() {
+
+        while (true) {
+            Immortal im;
+
+            int myIndex = immortalsPopulation.indexOf(this);
+
+            int nextFighterIndex = r.nextInt(immortalsPopulation.size());
+
+            //avoid self-fight
+            if (nextFighterIndex == myIndex) {
+                nextFighterIndex = ((nextFighterIndex + 1) % immortalsPopulation.size());
+            }
+
+            im = immortalsPopulation.get(nextFighterIndex);
+
+            this.fight(im);
+
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+    }
+
+    public void fight(Immortal i2) {
+
+        if (i2.getHealth() > 0) {
+            i2.changeHealth(i2.getHealth() - defaultDamageValue);
+            this.health += defaultDamageValue;
+            updateCallback.processReport("Fight: " + this + " vs " + i2+"\n");
+        } else {
+            updateCallback.processReport(this + " says:" + i2 + " is already dead!\n");
+        }
+
+    }
+
+```
