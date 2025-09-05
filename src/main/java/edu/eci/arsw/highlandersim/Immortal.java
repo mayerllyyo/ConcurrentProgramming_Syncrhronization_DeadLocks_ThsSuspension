@@ -17,6 +17,13 @@ public class Immortal extends Thread {
 
     private final Random r = new Random(System.currentTimeMillis());
 
+    public volatile boolean paused=false;
+
+    public volatile boolean IsActuallyPaused=false;
+
+    public volatile boolean isDead=false;
+
+    
 
     public Immortal(String name, List<Immortal> immortalsPopulation, int health, int defaultDamageValue, ImmortalUpdateReportCallback ucb) {
         super(name);
@@ -30,7 +37,25 @@ public class Immortal extends Thread {
     public void run() {
 
         while (true) {
+
+            if (this.isDead) {
+                break; 
+            }
+
+            if(paused){
+                synchronized(this){
+                    try {
+                        IsActuallyPaused=true;
+                        wait();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
             Immortal im;
+
+            
 
             int myIndex = immortalsPopulation.indexOf(this);
 
@@ -43,7 +68,9 @@ public class Immortal extends Thread {
 
             im = immortalsPopulation.get(nextFighterIndex);
 
-            this.fight(im);
+            if (!im.isDead) {
+                this.fight(im);
+            }
 
             try {
                 Thread.sleep(1);
@@ -56,15 +83,31 @@ public class Immortal extends Thread {
     }
 
     public void fight(Immortal i2) {
+    Immortal first = this;
+    Immortal second = i2;
 
-        if (i2.getHealth() > 0) {
-            i2.changeHealth(i2.getHealth() - defaultDamageValue);
-            this.health += defaultDamageValue;
-            updateCallback.processReport("Fight: " + this + " vs " + i2+"\n");
-        } else {
-            updateCallback.processReport(this + " says:" + i2 + " is already dead!\n");
+        if (first.name.compareTo(second.name) > 0) {
+            first = i2;
+            second = this;
         }
 
+        synchronized (first) {
+            synchronized (second) {
+                if (i2.getHealth() > 0) {
+                    i2.changeHealth(i2.getHealth() - defaultDamageValue);
+                    this.health += defaultDamageValue;
+                    if(i2.getHealth()<=0){
+                        i2.isDead = true; 
+                    }
+                    updateCallback.processReport("Fight: " + this + " vs " + i2 + "\n");
+                } else {
+                    updateCallback.processReport(this + " says:" + i2 + " is already dead!\n");
+                }
+            }
+            if (this.health <= 0) {
+                this.isDead = true;
+            }
+        }
     }
 
     public void changeHealth(int v) {
@@ -79,6 +122,18 @@ public class Immortal extends Thread {
     public String toString() {
 
         return name + "[" + health + "]";
+    }
+
+    public void pause(){
+        paused=true;
+
+    }
+    public void resumeImmortal(){
+        paused = false;
+        IsActuallyPaused=false;
+        synchronized(this){
+            notifyAll();
+        }
     }
 
 }

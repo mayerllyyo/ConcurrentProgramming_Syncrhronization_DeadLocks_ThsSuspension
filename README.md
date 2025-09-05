@@ -188,7 +188,7 @@ This confirms that our solution behaves efficiently under constrained buffer siz
 
 ### *Part III*
 
-Review the “highlander-simulator” program, available in the edu.eci.arsw.highlandersim package. This is a game in which:
+#### Review the “highlander-simulator” program, available in the edu.eci.arsw.highlandersim package. This is a game in which:
 
 - There are N immortal players.
 - Each player knows the remaining N-1 players.
@@ -196,7 +196,7 @@ Review the “highlander-simulator” program, available in the edu.eci.arsw.hig
 - The game may never have a single winner. Most likely, only two will remain in the end, fighting indefinitely, subtracting and adding hit points.
 
 
-Review the code and identify how the aforementioned functionality was implemented. Given the game's intent, an invariant should be that the sum of all players' hit points should always be the same (obviously, at a time point when a time increment/decrement operation is not in progress). In this case, for N players, what should this value be?
+#### Review the code and identify how the aforementioned functionality was implemented. Given the game's intent, an invariant should be that the sum of all players' hit points should always be the same (obviously, at a time point when a time increment/decrement operation is not in progress). In this case, for N players, what should this value be?
 
 The value for N players must be N * health
 (inital health of 1 immortal)
@@ -246,3 +246,273 @@ public void run() {
     }
 
 ```
+
+Run the application and check how the 'pause' and 'check' options work. Is the invariant true?
+
+1st click:
+
+![image](assets/Invariant1.png)
+
+2st click:
+
+![image](assets/Invariant2.png)
+
+3st click:
+
+![image](assets/Invariant3.png)
+
+
+Conclution, The invariant is not being fulfilled, the value is altered with each click
+
+#### A first hypothesis for the race condition to arise for this function (pause and check) is that the program consults the list whose values ​​it will print, while other threads modify their values. To correct this, do whatever is necessary to effectively pause all other threads before printing the current results. Additionally, implement the 'resume' option.
+
+
+We added the variables paused and isActuallyPaused
+
+Then, created the methods pause and resumeImmortal in Immortal.java
+
+```java
+
+    public void pause(){
+        paused=true;
+
+    }
+    public void resumeImmortal(){
+        paused = false;
+        IsActuallyPaused=false;
+        synchronized(this){
+            notifyAll();
+        }
+    }
+```
+
+Then we called pause in the run method:
+
+```java
+
+    if(paused){
+        synchronized(this){
+            try {
+                IsActuallyPaused=true;
+                wait();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+```
+
+And finally the implementations y ControlFrame.java:
+
+```java
+    JButton btnPauseAndCheck = new JButton("Pause and check");
+    btnPauseAndCheck.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+
+            /*
+                * COMPLETAR
+                */
+            int sum = 0;
+            for (Immortal im : immortals) {
+                im.pause();
+            }
+
+            boolean allPaused;
+            do {
+                allPaused = true;
+                for (Immortal im : immortals) {
+                    if (!im.IsActuallyPaused) {
+                        allPaused = false;
+                    }
+                }
+            } while (!allPaused);
+            
+            for (Immortal im : immortals) {
+                sum += im.getHealth();
+            }
+            
+
+            statisticsLabel.setText("<html>"+immortals.toString()+"<br>Health sum:"+ sum);
+        
+        }
+    });
+
+
+    JButton btnResume = new JButton("Resume");
+
+    btnResume.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+            /**
+             * IMPLEMENTAR
+             */
+
+            for (Immortal im : immortals) {
+                im.resumeImmortal();
+            }
+
+        }
+    });
+
+
+```
+
+#### Check the operation again (click the button several times). Is the invariant fulfilled or not?
+
+1st click:
+![image](assets/Invariant4.png)
+
+2nd click:
+![image](assets/Invariant5.png)
+
+the invariant does not hold
+
+#### Identify potential critical regions regarding the immortals' fight. Implement a locking strategy that avoids race conditions.
+
+When pausing/resume there are race conditions in the fight method and the way health is updated.
+
+```java
+
+public void fight(Immortal i2) {
+
+    if (i2.getHealth() > 0) {
+        i2.changeHealth(i2.getHealth() - defaultDamageValue);
+        this.health += defaultDamageValue;
+        updateCallback.processReport("Fight: " + this + " vs " + i2+"\n");
+    } else {
+        updateCallback.processReport(this + " says:" + i2 + " is already dead!\n");
+    }
+
+    }
+
+```
+
+This is the new 'fight' method to avoid race conditions:
+
+```java
+
+public void fight(Immortal i2) {
+    Immortal first = this;
+    Immortal second = i2;
+
+        if (first.name.compareTo(second.name) > 0) {
+            first = i2;
+            second = this;
+        }
+
+        synchronized (first) {
+            synchronized (second) {
+                if (i2.getHealth() > 0) {
+                    i2.changeHealth(i2.getHealth() - defaultDamageValue);
+                    this.health += defaultDamageValue;
+                    updateCallback.processReport("Fight: " + this + " vs " + i2 + "\n");
+                } else {
+                    updateCallback.processReport(this + " says:" + i2 + " is already dead!\n");
+                }
+            }
+        }
+    }
+
+```
+
+Now the invariant is fulfilled correctly
+
+1st click:
+![image](assets/Invariant6.png)
+
+2nd click:
+![image](assets/Invariant7.png)
+
+3rd click:
+![image](assets/Invariant8.png)
+
+
+For 100 Immortals:
+
+![image](assets/Invariant9.png)
+
+
+![image](assets/Invariant10.png)
+
+For 1000 Immortals:
+
+![image](assets/Invariant11.png)
+
+
+![image](assets/Invariant12.png)
+
+
+
+For 10000 Immortals:
+
+
+![image](assets/Invariant13.png)
+
+
+#### Analyzing the functioning scheme of the simulation, could this create a race condition? Implement the functionality, run the simulation and observe what problem arises when there are many 'immortals' in it. Write your conclusions about it in the RESPUESTAS.txt file.
+
+#### Correct the previous problem WITHOUT using synchronization, since making sequential access to the shared list of immortals would make the simulation extremely slow.
+
+**Race Condition Analysis:**
+
+YES, removing dead immortals from the shared list creates race conditions because:
+
+- Multiple threads simultaneously access the `immortalsPopulation` list
+- Some threads read the list to select opponents (in `run()` method)
+- Other threads modify the list by removing dead immortals (in `fight()` method)
+- This can cause `IndexOutOfBoundsException` or `ConcurrentModificationException`
+
+**Evidence of the Problem:**
+
+When running the simulation with many immortals (10-15), the following issues were observed:
+- `IndexOutOfBoundsException` when a thread tries to access an index that no longer exists
+- `ConcurrentModificationException` when the list is modified while another thread is iterating over it
+- Inconsistencies in list size
+
+**Solution Implemented (WITHOUT Synchronization):**
+
+Instead of directly removing dead immortals from the list, we implemented a "mark as dead" strategy:
+
+1. **State Variable:**
+   ```java
+   public volatile boolean isDead = false;
+   ```
+
+2. **Mark as Dead:**
+   ```java
+   if(i2.getHealth()<=0){
+       i2.isDead = true; // Only mark, don't remove
+   }
+   ```
+
+3. **Check Before Fighting:**
+   ```java
+   if (!im.isDead) {
+       this.fight(im);
+   }
+   ```
+
+4. **Thread Termination:**
+   ```java
+   public void run() {
+       while (true) {
+           if (this.isDead) {
+               break; // Terminate thread execution
+           }
+           // ... rest of the code
+       }
+   }
+   ```
+
+**Advantages of the Solution:**
+- **Eliminates Race Conditions:** No modification of shared list structure
+- **Better Performance:** No fights with dead immortals, dead threads stop consuming CPU
+- **Thread-Safe:** Uses volatile variables for visibility between threads
+- **Efficiency:** Dead immortals are automatically excluded from future fights
+
+**Conclusions:**
+1. Direct removal of elements from shared lists in concurrent environments always creates race conditions
+2. The "mark as dead" strategy is more efficient than synchronization for this type of problem
+3. Using volatile variables is sufficient for this case, as only state is modified, not the shared data structure
+4. This solution maintains high concurrency without sacrificing program correctness
+5. Dead threads self-eliminate from the simulation without affecting other threads
