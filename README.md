@@ -360,10 +360,10 @@ And finally the implementations y ControlFrame.java:
 #### Check the operation again (click the button several times). Is the invariant fulfilled or not?
 
 1st click:
-![image](assets/Invariant4.png)
+![image](assets/invariant4.png)
 
 2nd click:
-![image](assets/Invariant5.png)
+![image](assets/invariant5.png)
 
 the invariant does not hold
 
@@ -418,35 +418,35 @@ public void fight(Immortal i2) {
 Now the invariant is fulfilled correctly
 
 1st click:
-![image](assets/Invariant6.png)
+![image](assets/invariant6.png)
 
 2nd click:
-![image](assets/Invariant7.png)
+![image](assets/invariant7.png)
 
 3rd click:
-![image](assets/Invariant8.png)
+![image](assets/invariant8.png)
 
 
 For 100 Immortals:
 
-![image](assets/Invariant9.png)
+![image](assets/invariant9.png)
 
 
-![image](assets/Invariant10.png)
+![image](assets/invariant10.png)
 
 For 1000 Immortals:
 
-![image](assets/Invariant11.png)
+![image](assets/invariant11.png)
 
 
-![image](assets/Invariant12.png)
+![image](assets/invariant12.png)
 
 
 
 For 10000 Immortals:
 
 
-![image](assets/Invariant13.png)
+![image](assets/invariant13.png)
 
 
 #### Analyzing the functioning scheme of the simulation, could this create a race condition? Implement the functionality, run the simulation and observe what problem arises when there are many 'immortals' in it. Write your conclusions about it in the RESPUESTAS.txt file.
@@ -503,7 +503,7 @@ Instead of directly removing dead immortals from the list, we implemented a "mar
        }
    }
    ```
-
+   
 **Advantages of the Solution:**
 - **Eliminates Race Conditions:** No modification of shared list structure
 - **Better Performance:** No fights with dead immortals, dead threads stop consuming CPU
@@ -516,3 +516,42 @@ Instead of directly removing dead immortals from the list, we implemented a "mar
 3. Using volatile variables is sufficient for this case, as only state is modified, not the shared data structure
 4. This solution maintains high concurrency without sacrificing program correctness
 5. Dead threads self-eliminate from the simulation without affecting other threads
+
+#### Implement STOP functionality
+
+The STOP button allows users to immediately terminate all immortal threads and halt the simulation.
+
+In the Immortal class:
+- We added a control variable:
+    ```java
+   public volatile boolean stopped=false;
+   ```
+- Modified the main loop in `run()` method to check the `stopped` flag
+- Created `stopImmortal()` method that sets the flag and interrupts sleeping threads:
+    ```java
+   public void stopImmortal(){
+        stopped = true;
+        this.interrupt();
+    }
+   ```
+In the Immortal class:
+
+Implemented the ActionListener for the STOP button:
+```java
+JButton btnStop = new JButton("STOP");
+        btnStop.setForeground(Color.RED);
+        btnStop.addActionListener(new ActionListener() {
+    public void actionPerformed(ActionEvent e) {
+        if (immortals != null) {
+            for (Immortal im : immortals) {
+                im.stopImmortal();
+            }
+            output.append("=== SIMULATION STOPPED ===\n");
+        }
+        btnStart.setEnabled(true);
+    }
+});
+        toolBar.add(btnStop);
+   ```
+example:
+![image](assets/STOP.png)
